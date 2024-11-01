@@ -16,6 +16,13 @@ public class Main {
         try {
             Connection conn = DriverManager.getConnection(url, props);
 
+            System.out.println("===========================================");
+            System.out.println("BIENVENIDO AL GESTOR DE TORNEOS DE FUTBOL!");
+            System.out.println("===========================================");
+
+
+
+
             Statement st = conn.createStatement();
             ResultSet rs = st.executeQuery("SELECT * FROM ropas");
             while (rs.next()) {
