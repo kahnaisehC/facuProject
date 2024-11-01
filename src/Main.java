@@ -32,6 +32,7 @@ public class Main {
             rs.close();
             st.close();
         } catch (Exception e) {
+            System.out.println("Todo funciona!!! (en teoria)");
             throw new RuntimeException(e);
         }
     }
