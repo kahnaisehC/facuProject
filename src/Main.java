@@ -17,7 +17,7 @@ public class Main {
             Connection conn = DriverManager.getConnection(url, props);
 
             System.out.println("===========================================");
-            System.out.println("BIENVENIDO AL GESTOR DE TORNEOS DE FUTBOL!");
+            System.out.println("BIENVENIDO AL GESTOR DE TORNEOS DE FUTBOL JODER MACHO!");
             System.out.println("===========================================");
 
 
