@@ -13,14 +13,20 @@ public class Main {
         Properties props = new Properties();
         props.setProperty("user", "postgres");
         props.setProperty("password", "Welcome4$");
+        String menu =
+                        "===========================================\n" +
+                        "BIENVENIDO AL GESTOR DE TORNEOS DE FUTBOL!\n" +
+                        "===========================================\n" +
+                        "Elija una opcion: \n" +
+                        "1.Ingresar un jugador\n" +
+                        "2.Ingresar un equipo\n" +
+                        "3.Crear un partido\n" +
+                        "4.Crear un torneo\n" +
+                        "0.Salir\n";
+
+
         try {
             Connection conn = DriverManager.getConnection(url, props);
-
-            System.out.println("===========================================");
-            System.out.println("BIENVENIDO AL GESTOR DE TORNEOS DE FUTBOL!!!!!!!!!!!!");
-            System.out.println("===========================================");
-
-
 
 
             Statement st = conn.createStatement();
