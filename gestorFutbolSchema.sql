@@ -58,6 +58,18 @@ CREATE TABLE public.jugador (
 ALTER TABLE public.jugador OWNER TO postgres;
 
 --
+-- Name: jugador_partido; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.jugador_partido (
+    dni_jugador integer NOT NULL,
+    id_partido integer NOT NULL
+);
+
+
+ALTER TABLE public.jugador_partido OWNER TO postgres;
+
+--
 -- Name: partido; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -173,6 +185,14 @@ COPY public.jugador (dni, nombre, nombre_equipo) FROM stdin;
 
 
 --
+-- Data for Name: jugador_partido; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.jugador_partido (dni_jugador, id_partido) FROM stdin;
+\.
+
+
+--
 -- Data for Name: partido; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -185,6 +205,7 @@ COPY public.partido (id_partido, fecha_hora, equipo1, equipo2, dni_arbitro, id_t
 --
 
 COPY public.torneo (id_torneo, nombre, equipo_ganador) FROM stdin;
+1	copa america	\N
 \.
 
 
@@ -199,7 +220,7 @@ SELECT pg_catalog.setval('public.partido_id_partido_seq', 1, false);
 -- Name: torneo_id_torneo_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.torneo_id_torneo_seq', 1, false);
+SELECT pg_catalog.setval('public.torneo_id_torneo_seq', 1, true);
 
 
 --
@@ -216,6 +237,14 @@ ALTER TABLE ONLY public.arbitro
 
 ALTER TABLE ONLY public.equipo
     ADD CONSTRAINT equipo_pkey PRIMARY KEY (nombre);
+
+
+--
+-- Name: jugador_partido jugador_partido_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.jugador_partido
+    ADD CONSTRAINT jugador_partido_pkey PRIMARY KEY (dni_jugador, id_partido);
 
 
 --
@@ -248,6 +277,22 @@ ALTER TABLE ONLY public.torneo
 
 ALTER TABLE ONLY public.jugador
     ADD CONSTRAINT jugador_nombre_equipo_fkey FOREIGN KEY (nombre_equipo) REFERENCES public.equipo(nombre);
+
+
+--
+-- Name: jugador_partido jugador_partido_dni_jugador_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.jugador_partido
+    ADD CONSTRAINT jugador_partido_dni_jugador_fkey FOREIGN KEY (dni_jugador) REFERENCES public.jugador(dni);
+
+
+--
+-- Name: jugador_partido jugador_partido_id_partido_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.jugador_partido
+    ADD CONSTRAINT jugador_partido_id_partido_fkey FOREIGN KEY (id_partido) REFERENCES public.partido(id_partido);
 
 
 --
