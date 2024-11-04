@@ -1,3 +1,4 @@
+import javax.swing.plaf.nimbus.State;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Properties;
@@ -14,6 +15,118 @@ class Equipo{
     public String nombre;
 }
 public class Main {
+    static void updatePartidosDeTorneo(Statement st, int id_torneo){
+        try {
+            ResultSet partidosTerminadosQuery = st.executeQuery("SELECT id_partido, equipo1, equipo2, id_partido_torneo, resultado FROM partido WHERE id_torneo = %d AND resultado != NULL");
+            while(partidosTerminadosQuery.next()){
+                String equipo1 = partidosTerminadosQuery.getString("equipo1");
+                String equipo2 = partidosTerminadosQuery.getString("equipo2");
+                int resultado = partidosTerminadosQuery.getInt("resultado");
+                int idPartidoTorneo = partidosTerminadosQuery.getInt("id_partido_torneo");
+                String equipoGanador;
+                if(resultado == 2){
+                    equipoGanador = equipo2;
+                }else if(resultado == 1){
+                    equipoGanador = equipo1;
+                }else{
+                    throw new RuntimeException("Resultado incompatible");
+                }
+                // UPDATE partido SET equipo1/2(modulo) = "equipoGanador" WHERE id_partido_torneo = idPartidoTorneo/2 AND id_torneo = id_torneo
+
+
+            }
+            partidosTerminadosQuery.close();
+
+
+        }
+        catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    static void insertarTorneo(Statement st, Scanner input){
+        try{
+        System.out.println("1.Elegir los equipos manualmente");
+        System.out.println("2.Crear un torneo con todos los equipos registrados");
+        String option = input.next();
+        ArrayList<String> equiposArray = new ArrayList<>();
+        switch (option){
+            case "1":{
+                break;
+            }
+            case "2":{
+                ResultSet equiposQuery = st.executeQuery("SELECT nombre FROM equipo WHERE nombre != 'bye'");
+                while(equiposQuery.next()){
+                    String equipo = "";
+                    equipo= equiposQuery.getString("nombre");
+                    equiposArray.add(equipo);
+                    System.out.printf("nombre del equipo: %s\n", equipo);
+                }
+                equiposQuery.close();
+                break;
+            }
+            default:{
+                System.out.println("opcion no valida");
+            }
+
+        }
+            // TODO: fadd UNIQUE constraint to nombre_de_torneo
+            // TODO: handle if nombreYaUtilizado
+            // TODO: handle if size of equipos == 1
+            System.out.println("Ingrese el nombre del torneo: ");
+            String nombreDelTorneo = input.next();
+            st.executeUpdate(String.format("INSERT INTO torneo(nombre) VALUES('%s')", nombreDelTorneo));
+            ResultSet id_torneoResultSet = st.executeQuery(String.format("SELECT id_torneo FROM torneo WHERE nombre = '%s'", nombreDelTorneo));
+            id_torneoResultSet.next();
+
+            int id_torneo = id_torneoResultSet.getInt("id_torneo");
+            id_torneoResultSet.close();
+
+            int base = 1;
+            while(base < equiposArray.size()){
+                base <<= 1;
+            }
+            int[] segTree = new int[base];
+            String[] pareos = new String[base];
+            int equiposArrayPointer = 0;
+            for(int i = 0; i < base; i+=2){
+                pareos[i] = equiposArray.get(equiposArrayPointer++);
+            }
+            for(int i = 1; i < base; i+=2) {
+                if (equiposArrayPointer >= equiposArray.size()){
+                    pareos[i] = "bye";
+                }else{
+                    pareos[i] = equiposArray.get(equiposArrayPointer++);
+                }
+            }
+
+            StringBuilder partidosString = new StringBuilder();
+            for(int i = 0; i < base; i+=2){
+                // base-i/2
+                String byeResult = "1";
+                if(pareos[i+1] != "bye")
+                    byeResult = "NULL";
+
+                partidosString.append(String.format("('%s', '%s', %d, %d, %s), ", pareos[i], pareos[i + 1], id_torneo, base - i / 2 -1, byeResult));
+            }
+
+            for(int i = base/2 -1; i>1; i--){
+                partidosString.append(String.format("(%s, %s, %d, %d, %s), ", "NULL", "NULL", id_torneo, i, "NULL"));
+            }
+
+            // resultado => 1 = equipo1 gana; 2 = equipo2 gana; 3 = empate; NULL/0 = no definido;
+            if(equiposArray.size() != 2)
+                partidosString.append(String.format("(%s, %s, %d, %d, %s)", "NULL", "NULL", id_torneo, 1, "NULL"));
+
+            System.out.println(partidosString.toString());
+            st.executeUpdate(String.format("INSERT INTO partido(equipo1, equipo2, id_torneo, id_partido_torneo, resultado) VALUES%s", partidosString.toString()));
+            updatePartidosDeTorneo(st, id_torneo);
+
+        }
+        catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
     public static void main(String[] args) {
 
 
@@ -77,81 +190,7 @@ public class Main {
                 }
                 // Crear un torneo
                 case "5":{
-                    System.out.println("1.Elegir los equipos manualmente");
-                    System.out.println("2.Crear un torneo con todos los equipos registrados");
-                    option = input.next();
-                    switch (option){
-                        case "1":{
-                            break;
-                        }
-                        case "2":{
-                            ResultSet equiposQuery = st.executeQuery("SELECT nombre FROM equipo");
-                            ArrayList<String> equiposArray = new ArrayList<>();
-                            while(equiposQuery.next()){
-                                String equipo = "";
-                                equipo= equiposQuery.getString("nombre");
-                                equiposArray.add(equipo);
-                                System.out.printf("nombre del equipo: %s\n", equipo);
-                            }
-                            equiposQuery.close();
-
-
-
-                            // TODO: fadd UNIQUE constraint to nombre_de_torneo
-                            // TODO: handle if nombreYaUtilizado
-                            System.out.println("Ingrese el nombre del torneo: ");
-                            String nombreDelTorneo = input.next();
-                            st.executeUpdate(String.format("INSERT INTO torneo(nombre) VALUES('%s')", nombreDelTorneo));
-                            ResultSet id_torneoResultSet = st.executeQuery("SELECT id_torneo FROM torneo WHERE nombre == nombreDelTorneo");
-                            id_torneoResultSet.next();
-
-                            int id_torneo = id_torneoResultSet.getInt("id_torneo");
-                            id_torneoResultSet.close();
-
-
-                            for(int i = 0; i < equiposArray.size(); i++){
-
-                            }
-
-
-
-
-                            int base = 1;
-                            while(base < equiposArray.size()){
-                                base <<= 1;
-                            }
-                            int[] segTree = new int[base];
-                            String[] pareos = new String[base];
-                            int equiposArrayPointer = 0;
-                            for(int i = 0; i < base; i+=2){
-                                pareos[i] = equiposArray.get(equiposArrayPointer++);
-                            }
-                            for(int i = 1; i < base; i+=2) {
-                                if (equiposArrayPointer >= equiposArray.size()){
-                                    pareos[i] = "NULL";
-                                }else{
-                                    pareos[i] = equiposArray.get(equiposArrayPointer);
-                                }
-                            }
-
-                            StringBuilder partidosString = new StringBuilder();
-                            for(int i = 0; i < base-2; i+=2){
-                                // base-i/2
-                                partidosString.append(String.format("('%s', '%s', %d, %d), ", pareos[i], pareos[i + 1], id_torneo, base - i / 2));
-                            }
-                            partidosString.append(String.format("('%s', '%s', %d, %d), ", pareos[pareos.length-2], pareos[pareos.length-1], id_torneo, (base)/2));
-
-                            // resultado => 1 = equipo1 gana; 2 = equipo2 gana; 3 = empate; NULL/0 = no definido;
-
-
-                            st.executeQuery(String.format("INSERT INTO partido(equipo1, equipo2, id_torneo, id_partido_torneo) VALUES%s", partidosString.toString()));
-                            break;
-                        }
-                        default:{
-                            System.out.println("opcion no valida");
-                        }
-                    }
-
+                    insertarTorneo(st, input);
                     break;
                 }
                 // Crear un partido
