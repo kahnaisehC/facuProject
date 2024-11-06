@@ -17,27 +17,32 @@ class Equipo{
 public class Main {
     static void updatePartidosDeTorneo(Statement st, int id_torneo){
         try {
-            ResultSet partidosTerminadosQuery = st.executeQuery("SELECT id_partido, equipo1, equipo2, id_partido_torneo, resultado FROM partido WHERE id_torneo = %d AND resultado != NULL");
+            ResultSet partidosTerminadosQuery = st.executeQuery(String.format("SELECT id_partido, equipo1, equipo2, id_partido_torneo, resultado FROM partido WHERE id_torneo = %d AND (resultado != NULL OR equipo1 ='bye' OR equipo2 = 'bye')", id_torneo));
             while(partidosTerminadosQuery.next()){
+                System.out.println("entre!");
                 String equipo1 = partidosTerminadosQuery.getString("equipo1");
                 String equipo2 = partidosTerminadosQuery.getString("equipo2");
                 int resultado = partidosTerminadosQuery.getInt("resultado");
                 int idPartidoTorneo = partidosTerminadosQuery.getInt("id_partido_torneo");
                 String equipoGanador;
-                if(resultado == 2){
+                String numeroEquipo = (1&idPartidoTorneo) == 1 ? "equipo2" : "equipo1";
+                if(resultado == 2 || equipo1.equals("bye")){
                     equipoGanador = equipo2;
-                }else if(resultado == 1){
+                }else if(resultado == 1 || equipo2.equals("bye")){
                     equipoGanador = equipo1;
                 }else{
                     throw new RuntimeException("Resultado incompatible");
                 }
-                // UPDATE partido SET equipo1/2(modulo) = "equipoGanador" WHERE id_partido_torneo = idPartidoTorneo/2 AND id_torneo = id_torneo
+                Connection conn = st.getConnection();
+                Statement st2 = conn.createStatement();
 
+                st2.executeUpdate(String.format("UPDATE partido SET %s = '%s' WHERE id_partido_torneo = %d AND id_torneo = %d", numeroEquipo, equipoGanador, idPartidoTorneo/2, id_torneo));
+                // UPDATE partido SET equipo1/2(modulo) = "equipoGanador" WHERE id_partido_torneo = idPartidoTorneo/2 AND id_torneo = id_torneo
+                st2.close();
+                conn.close();
 
             }
             partidosTerminadosQuery.close();
-
-
         }
         catch (Exception e){
             throw new RuntimeException(e);
@@ -68,9 +73,7 @@ public class Main {
             default:{
                 System.out.println("opcion no valida");
             }
-
         }
-            // TODO: fadd UNIQUE constraint to nombre_de_torneo
             // TODO: handle if nombreYaUtilizado
             // TODO: handle if size of equipos == 1
             System.out.println("Ingrese el nombre del torneo: ");
