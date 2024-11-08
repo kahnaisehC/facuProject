@@ -45,20 +45,76 @@ public class Main {
         }
     }
 
-    static void insertarTorneo(Statement st, Scanner input){
+    static void elegirListaTorneos(Connection conn, Scanner input){
         try{
-            String insertarTorneoMenu = "1.Elegir los equipos manualmente\n" +
-                    "2.Crear un torneo con todos los equipos registrados\n" +
-                    "0.Volver a menu principal\n";
+            Statement st = conn.createStatement();
             String option;
             do{
+                System.out.println("1.Mostrar torneos ya terminados");
+                System.out.println("2.Mostrar torneos en juego");
+                System.out.println("0.Volver hacia atras");
+                option = input.next();
+                switch (option){
+                    case "1":{
+                        // Revisar torneos terminados
+                        ArrayList<Torneo> torneosTerminados = new ArrayList<>();
+                        ResultSet torneosTerminadosQuery = st.executeQuery("SELECT id_torneo, nombre, equipo_ganador FROM torneo WHERE equipo_ganador IS NOT NULL");
+                        while(torneosTerminadosQuery.next()){
+                            Torneo torneo = new Torneo();
+                            torneo.id_torneo = torneosTerminadosQuery.getInt("id_torneo");
+                            torneo.nombre_torneo = torneosTerminadosQuery.getString("nombre");
+                            torneo.equipo_ganador = torneosTerminadosQuery.getString("equipo_ganador");
+                            torneosTerminados.add(torneo);
+                        }
+                        torneosTerminadosQuery.close();
+                        break;
+                    }
+                    // Mostrar torneos en juego
+                    case "2":{
+                        ArrayList<Torneo> torneosEnJuego = new ArrayList<>();
+                        ResultSet torneosEnJuegoQuery = st.executeQuery("SELECT id_torneo, nombre FROM torneo WHERE equipo_ganador IS NULL");
+                        while(torneosEnJuegoQuery.next()){
+                            Torneo torneo = new Torneo();
+                            torneo.id_torneo = torneosEnJuegoQuery.getInt("id_torneo");
+                            torneo.nombre_torneo = torneosEnJuegoQuery.getString("nombre");
+                            torneosEnJuego.add(torneo);
+                        }
+                        torneosEnJuegoQuery.close();
+                        break;
+                    }
+                    case "0":{
+                        break;
+                    }
+                    default:{
+                        System.out.println("Opcion no valida");
+                    }
+                }
+
+            }while(!option.equals("0"));
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    static void insertarTorneo(Connection conn, Scanner input){
+        try{
+            Statement st = conn.createStatement();
+            String insertarTorneoMenu = "1.Elegir los equipos manualmente\n" +
+                    "2.Crear un torneo con todos los equipos registrados\n" +
+                    "0.Volver hacia atras\n";
+            String option;
+            ArrayList<String> equiposArray = new ArrayList<>();
+            Boolean breakWhile;
+            do{
+                breakWhile = true;
                 System.out.println(insertarTorneoMenu);
                 option = input.next();
-                ArrayList<String> equiposArray = new ArrayList<>();
                 switch (option){
+                    // Elegir equipos manualmente
                     case "1":{
                         break;
                     }
+                    // Elegir todos los equipos
                     case "2":{
                         ResultSet equiposQuery = st.executeQuery("SELECT nombre FROM equipo WHERE nombre != 'bye'");
                         while(equiposQuery.next()){
@@ -70,70 +126,73 @@ public class Main {
                         equiposQuery.close();
                         break;
                     }
+                    // Volver hacia atras / Salir de la funcion
                     case "0":{
+                       st.close();
                         return;
+
                     }
                     default:{
+                        breakWhile = false;
                         System.out.println("opcion no valida");
-                        return;
                     }
                 }
                 if(equiposArray.size() < 2){
                     System.out.println("No hay suficientes equipos para crear torneo");
-                    return;
+                    breakWhile = false;
                 }
-                // TODO: handle if nombreYaUtilizado
-                // TODO: handle if size of equipos == 1
-                System.out.println("Ingrese el nombre del torneo: ");
-                String nombreDelTorneo = input.next();
-                st.executeUpdate(String.format("INSERT INTO torneo(nombre) VALUES('%s')", nombreDelTorneo));
-                ResultSet id_torneoResultSet = st.executeQuery(String.format("SELECT id_torneo FROM torneo WHERE nombre = '%s'", nombreDelTorneo));
-                id_torneoResultSet.next();
+            }while(!breakWhile);
+            // TODO: handle if nombreYaUtilizado
+            // TODO: handle if size of equipos == 1
+            System.out.println("Ingrese el nombre del torneo: ");
+            String nombreDelTorneo = input.next();
+            st.executeUpdate(String.format("INSERT INTO torneo(nombre) VALUES('%s')", nombreDelTorneo));
+            ResultSet id_torneoResultSet = st.executeQuery(String.format("SELECT id_torneo FROM torneo WHERE nombre = '%s'", nombreDelTorneo));
+            id_torneoResultSet.next();
 
-                int id_torneo = id_torneoResultSet.getInt("id_torneo");
-                id_torneoResultSet.close();
+            int id_torneo = id_torneoResultSet.getInt("id_torneo");
+            id_torneoResultSet.close();
 
-                int base = 1;
-                while(base < equiposArray.size()){
-                    base <<= 1;
-                }
-                String[] pareos = new String[base];
-                int equiposArrayPointer = 0;
-                for(int i = 0; i < base; i+=2){
+            int base = 1;
+            while(base < equiposArray.size()){
+                base <<= 1;
+            }
+            String[] pareos = new String[base];
+            int equiposArrayPointer = 0;
+            for(int i = 0; i < base; i+=2){
+                pareos[i] = equiposArray.get(equiposArrayPointer++);
+            }
+            for(int i = 1; i < base; i+=2) {
+                if (equiposArrayPointer >= equiposArray.size()){
+                    pareos[i] = "bye";
+                }else{
                     pareos[i] = equiposArray.get(equiposArrayPointer++);
                 }
-                for(int i = 1; i < base; i+=2) {
-                    if (equiposArrayPointer >= equiposArray.size()){
-                        pareos[i] = "bye";
-                    }else{
-                        pareos[i] = equiposArray.get(equiposArrayPointer++);
-                    }
-                }
+            }
 
-                StringBuilder partidosString = new StringBuilder();
-                for(int i = 0; i < base; i+=2){
-                    // base-i/2
-                    String byeResult = "'" + pareos[i] + "'";
-                    if(pareos[i+1].equals("bye"))
-                        byeResult = "NULL";
+            StringBuilder partidosString = new StringBuilder();
+            for(int i = 0; i < base; i+=2){
+                // base-i/2
+                String byeResult = "'" + pareos[i] + "'";
+                if(pareos[i+1].equals("bye"))
+                    byeResult = "NULL";
 
-                    partidosString.append(String.format("('%s', '%s', %d, %d, %s), ", pareos[i], pareos[i + 1], id_torneo, base - i / 2 -1, byeResult));
-                }
+                partidosString.append(String.format("('%s', '%s', %d, %d, %s), ", pareos[i], pareos[i + 1], id_torneo, base - i / 2 -1, byeResult));
+            }
 
-                for(int i = base/2 -1; i>1; i--){
-                    partidosString.append(String.format("(%s, %s, %d, %d, %s), ", "NULL", "NULL", id_torneo, i, "NULL"));
-                }
+            for(int i = base/2 -1; i>1; i--){
+                partidosString.append(String.format("(%s, %s, %d, %d, %s), ", "NULL", "NULL", id_torneo, i, "NULL"));
+            }
 
-                // resultado => 1 = equipo1 gana; 2 = equipo2 gana; 3 = empate; NULL/0 = no definido;
-                if(equiposArray.size() != 2)
-                    partidosString.append(String.format("(%s, %s, %d, %d, %s)", "NULL", "NULL", id_torneo, 1, "NULL"));
+            // resultado => 1 = equipo1 gana; 2 = equipo2 gana; 3 = empate; NULL/0 = no definido;
+            if(equiposArray.size() != 2)
+                partidosString.append(String.format("(%s, %s, %d, %d, %s)", "NULL", "NULL", id_torneo, 1, "NULL"));
 
-                System.out.println(partidosString.toString());
-                st.executeUpdate(String.format("INSERT INTO partido(equipo1, equipo2, id_torneo, id_partido_torneo, equipo_ganador) VALUES%s", partidosString.toString()));
-                updatePartidosDeTorneo(st, id_torneo);
-                System.out.println("opciones de torneo");
-                return;
-            }while(true);
+            System.out.println(partidosString.toString());
+            st.executeUpdate(String.format("INSERT INTO partido(equipo1, equipo2, id_torneo, id_partido_torneo, equipo_ganador) VALUES%s", partidosString.toString()));
+            updatePartidosDeTorneo(st, id_torneo);
+            System.out.println("opciones de torneo");
+            st.close();
 
         }
         catch (Exception e){
@@ -141,11 +200,7 @@ public class Main {
         }
     }
     public static void main(String[] args) {
-
-
-        
         Scanner input = new Scanner(System.in);
-
         String url = "jdbc:postgresql://localhost/facuproj";
         Properties props = new Properties();
         props.setProperty("user", "postgres");
@@ -165,7 +220,6 @@ public class Main {
 
         try {
             Connection conn = DriverManager.getConnection(url, props);
-            Statement st = conn.createStatement();
             String option;
             do{
                 System.out.println(menuPrincipal);
@@ -188,21 +242,12 @@ public class Main {
                     }
                     // Revisar lista de torneos
                     case "4":{
-                        ResultSet torneos = st.executeQuery("SELECT id_torneo, nombre, equipo_ganador FROM torneo");
-                        while(torneos.next()){
-                            Torneo torneo = new Torneo();
-                            torneo.id_torneo = torneos.getInt("id_torneo");
-                            torneo.nombre_torneo = torneos.getString("nombre");
-                            torneo.equipo_ganador = torneos.getString("equipo_ganador");
-                            System.out.printf("%d es el id del torneo\n %s es el nombre del torneo\n %s es el equipo ganador\n", torneo.id_torneo, torneo.nombre_torneo, torneo.equipo_ganador);
-                        }
-                        torneos.close();
-
+                        elegirListaTorneos(conn, input);
                         break;
                     }
                     // Crear un torneo
                     case "5":{
-                        insertarTorneo(st, input);
+                        insertarTorneo(conn, input);
                         break;
                     }
                     // Crear un partido
@@ -223,7 +268,6 @@ public class Main {
 
             }while(!option.equals("0"));
             conn.close();
-            st.close();
 
         } catch (Exception e) {
             throw new RuntimeException(e);
