@@ -1,5 +1,3 @@
-import org.checkerframework.checker.units.qual.A;
-
 import javax.swing.plaf.nimbus.State;
 import java.sql.*;
 import java.util.*;
@@ -234,10 +232,51 @@ public class Main {
         }
     }
 
-    private static void torneosEnJuego(Connection conn, Scanner input){
+    private static void modificarPartido(Scanner input, Partido partido){
+        while(true){
+            System.out.println("Ingrese el ganador del partido (1 o 2)");
+            System.out.println("1." + partido.equipo1);
+            System.out.println("2." + partido.equipo2);
+            String option = input.next();
+            if(option.equals("1")){
+                partido.equipo_ganador = partido.equipo1;
+            }else if(option.equals("2")){
+                partido.equipo_ganador = partido.equipo2;
+            }else{
+                System.out.println("Escriba 1 o 2!!");
+                continue;
+            }
+            break;
+        }
 
+    }
+
+    private static void guardarCambiosDePartidos(Connection conn, HashMap<Integer, Partido> partidosDeTorneo, int idTorneo){
+        // "DELETE FROM partidos WHERE id_torneo = idTorneo
+        try{
+            Statement st = conn.createStatement();
+            st.executeUpdate("DELETE FROM partido WHERE id_torneo = " + idTorneo);
+            st.close();
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return;
+        }
+        try {
+            Statement st = conn.createStatement();
+            for (Integer id_partido_torneo : partidosDeTorneo.keySet()){
+                Partido partido = partidosDeTorneo.get(id_partido_torneo);
+                st.executeUpdate(String.format("INSERT INTO partido(equipo1, equipo2, id_torneo, id_partido_torneo, equipo_ganador) VALUES('%s', '%s', %d, %d, '%s')", partido.equipo1, partido.equipo2, idTorneo, id_partido_torneo, partido.equipo_ganador));
+            }
+            st.close();
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void torneosEnJuego(Connection conn, Scanner input){
         Integer idTorneo;
         HashMap<Integer, String> torneosEnJuego = new HashMap<>();
+        HashMap<Integer, Partido> partidosDeTorneo = new HashMap<>();
         try{
             Statement st = conn.createStatement();
             ResultSet torneosEnJuegoQuery = st.executeQuery(String.format("SELECT id_torneo, nombre FROM torneo WHERE id_torneo NOT IN (SELECT DISTINCT(id_torneo) FROM torneo WHERE equipo_ganador IS NOT NULL)"));
@@ -273,71 +312,74 @@ public class Main {
                 continue;
             }
             idTorneo = Integer.parseInt(option);
-            HashMap<Integer, Partido> partidosDeTorneo = new HashMap<>();
             // get partidos
-            try {
-                Statement st = conn.createStatement();
-                System.out.println(String.format("SELECT id_partido, equipo1, equipo2, id_partido_torneo FROM partido WHERE id_torneo = %d", idTorneo));
-                ResultSet partidosDeTorneoQuery = st.executeQuery(String.format("SELECT id_partido, equipo1, equipo2, id_partido_torneo, equipo_ganador FROM partido WHERE id_torneo = %d", idTorneo));
-                while(partidosDeTorneoQuery.next()){
-                    Partido partido = new Partido();
-                    partido.id_partido = partidosDeTorneoQuery.getInt("id_partido");
-                    partido.equipo1 = partidosDeTorneoQuery.getString("equipo1");
-                    partido.equipo2 = partidosDeTorneoQuery.getString("equipo2");
-                    partido.equipo_ganador = partidosDeTorneoQuery.getString("equipo_ganador");
-                    partido.id_partido_torneo = partidosDeTorneoQuery.getInt("id_partido_torneo");
-                    partidosDeTorneo.put(partido.id_partido_torneo, partido);
-                    System.out.println("fdioskjflksdfjklds");
-                }
-                partidosDeTorneoQuery.close();
-                st.close();
-            }catch (Exception e){
-                System.out.println(e.getMessage());
-                return;
-            }
             // ask to modify them
-            while(true){
-                System.out.println("Ingrese el numero del partido a modificar");
-                for(Integer id_partido_torneo : partidosDeTorneo.keySet()){
-                    Partido partido = partidosDeTorneo.get(id_partido_torneo);
-                    Partido siguientePartido = partidosDeTorneo.get((id_partido_torneo/2));
-                    System.out.println(partido.equipo1);
-                    System.out.println(partido.equipo2);
-                    
-                    if((siguientePartido == null || siguientePartido.equipo_ganador == null) && (partido.equipo1 != null) && (partido.equipo2 != null)){
-
-                        int avos = 1;
-                        while(avos < partido.id_partido_torneo){
-                            avos <<= 1;
-                        }
-                        if(avos == 1){
-                            System.out.printf("Final: ");
-                        }
-                        else if(avos == 2){
-                            System.out.printf("Semi-final: ");
-                        }
-                        else if(avos == 4){
-                            System.out.printf("4tos: ");
-                        }else{
-                            System.out.printf("%dvos: ", avos);
-                        }
-
-                        System.out.println(partido.id_partido_torneo + "." + partido.equipo1 + " vs " + partido.equipo2);
-
-                    }
-                    option = input.next();
-
-                }
-                if(option.equals("0")){
-                    break;
-                }
-
-            }
-
             // update partidos
-
-
             break;
+        }
+        try {
+            Statement st = conn.createStatement();
+            System.out.println(String.format("SELECT id_partido, equipo1, equipo2, id_partido_torneo FROM partido WHERE id_torneo = %d", idTorneo));
+            ResultSet partidosDeTorneoQuery = st.executeQuery(String.format("SELECT id_partido, equipo1, equipo2, id_partido_torneo, equipo_ganador FROM partido WHERE id_torneo = %d", idTorneo));
+            while(partidosDeTorneoQuery.next()){
+                Partido partido = new Partido();
+                partido.id_partido = partidosDeTorneoQuery.getInt("id_partido");
+                partido.equipo1 = partidosDeTorneoQuery.getString("equipo1");
+                partido.equipo2 = partidosDeTorneoQuery.getString("equipo2");
+                partido.equipo_ganador = partidosDeTorneoQuery.getString("equipo_ganador");
+                partido.id_partido_torneo = partidosDeTorneoQuery.getInt("id_partido_torneo");
+                partidosDeTorneo.put(partido.id_partido_torneo, partido);
+            }
+            partidosDeTorneoQuery.close();
+            st.close();
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return;
+        }
+        while(true){
+            String option = "";
+            System.out.println("Ingrese 0 para guardar los cambios");
+            System.out.println("Ingrese el numero del partido a modificar");
+            for(Integer id_partido_torneo : partidosDeTorneo.keySet()){
+                Partido partido = partidosDeTorneo.get(id_partido_torneo);
+                Partido siguientePartido = partidosDeTorneo.get((id_partido_torneo/2));
+
+                if((siguientePartido == null || siguientePartido.equipo_ganador == null) && (partido.equipo1 != null) && (partido.equipo2 != null)){
+
+                    int avos = 1;
+                    while(avos < partido.id_partido_torneo){
+                        avos <<= 1;
+                    }
+                    if(avos == 1){
+                        System.out.printf("Final: ");
+                    }
+                    else if(avos == 2){
+                        System.out.printf("Semi-final: ");
+                    }
+                    else if(avos == 4){
+                        System.out.printf("4tos: ");
+                    }else{
+                        System.out.printf("%dvos: ", avos);
+                    }
+
+                    System.out.println(partido.id_partido_torneo + "." + partido.equipo1 + " vs " + partido.equipo2);
+
+                }
+            }
+            option = input.next();
+            if(option.equals("0")){
+                guardarCambiosDePartidos(conn, partidosDeTorneo, idTorneo);
+                break;
+            }
+            if(!isNumeric(option)){
+                System.out.println("Ingrese un numero!!");
+                continue;
+            }
+            if(partidosDeTorneo.get(Integer.parseInt(option)) == null){
+                System.out.println("El numero de partido no esta registrado");
+                continue;
+            }
+            modificarPartido(input, partidosDeTorneo.get(Integer.parseInt(option)));
         }
     }
 
