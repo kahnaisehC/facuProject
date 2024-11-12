@@ -1,16 +1,13 @@
-import javax.swing.plaf.nimbus.State;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.Scanner;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-class Torneo{
-    public int id_torneo;
-    public String nombre_torneo;
-    public String equipo_ganador;
-}
 class Equipo{
     public String nombre;
 }
