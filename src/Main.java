@@ -523,9 +523,44 @@ public class Main {
                         System.out.println("Opcion no valida.");
                     }
                 }
-
             }while(!option.equals("0"));
         }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+    static void revisarListaPartidos(Connection conn, Scanner input){
+        try {
+            Statement st = conn.createStatement();
+            String option;
+            do {
+                System.out.println("1. Mostrar todos los partidos.");
+                System.out.println("2. Crear un partido.");
+                System.out.println("3. Editar un partido");
+                System.out.println("4. Borrar un partido");
+                System.out.println("0. Volver hacia atras.");
+                option = input.next();
+                switch (option) {
+                    case "1":{
+                    }
+                    case "2":{
+
+                    }
+                    case "3":{
+
+                    }
+                    case "4":{
+
+                    }
+                    case "0":{
+                        break;
+                    }
+                    default:{
+                        System.out.println("Entrada invalida!");
+                    }
+                }
+            } while (!option.equals("0"));
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -540,13 +575,12 @@ public class Main {
         String url = dotenv.get("PG_URL");
         String menuPrincipal =
                         "===========================================\n" +
-                        "BIENVENIDO AL GESTOR DE TORNEOS DE FUTBOL!\n" +
+                        "BIENVENIDO AL GESTOR DE PARTIDOS DE FUTBOL!\n" +
                         "===========================================\n" +
                         "Elija una opcion: \n" +
                         "1.Revisar/Editar lista de jugadores\n" +
                         "2.Revisar/Editar lista de equipos\n" +
                         "3.Revisar/Editar lista de partidos\n" +
-                        "4.Crear un partido\n" +
                         "0.Salir\n";
 
         try {
@@ -568,12 +602,7 @@ public class Main {
                     }
                     //Revisar lista de partidos
                     case "3":{
-
-                        break;
-                    }
-                    // Crear un partido
-                    case "4":{
-
+                        revisarListaPartidos(conn, input);
                         break;
                     }
                     // Salir del menu Principal
