@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.Scanner;
 
@@ -14,6 +15,15 @@ class Equipo{
     public String nombre;
 }
 
+class Partido{
+    public int id_partido;
+    public String equipo1;
+    public String equipo2;
+    public String equipo_ganador;
+    public int equipo1_goles;
+    public int equipo2_goles;
+}
+
 class Jugador{
     public int dni;
     public String nombre;
@@ -21,6 +31,14 @@ class Jugador{
 }
 
 public class Main {
+    static boolean isNumeric(String str){
+        for(int i =0; i < str.length(); i++){
+            if(str.charAt(i) < '0' || str.charAt(i) > '9')
+                return false;
+        }
+        return true;
+    }
+
 
     static ArrayList<Jugador> obtenerListaJugadores(Connection conn){
         ArrayList<Jugador> Jugadores = new ArrayList<>();
@@ -290,10 +308,7 @@ public class Main {
                         }
 
                         System.out.println("El equipo "+Nombre+" ha sido registrado.");
-
-                        /* TODO: hacer QUERY para insertar el EQUIPO a la BD.
-                               La variable a utilizar es "Nombre".
-                        */
+                        st.executeUpdate("INSERT INTO equipo(nombre) VALUES('" + Nombre + "')");
 
                         break;
                     }
@@ -367,6 +382,8 @@ public class Main {
                         }
 
                         System.out.println("El jugador "+jugadorSinEquipo.nombre+" ha sido integrado a "+equipoIntegrador.nombre+".");
+
+                        st.executeUpdate("UPDATE jugador SET equipo = '" + equipoJugador + "' WHERE dni = " + DNI);
                         /* TODO: hacer QUERY para cambiar los datos del JUGADOR en la BD.
                                El registro del JUGADOR puede ser obtenido con la variable "DNI".
                                El campo a cambiar es "equipo", el cual debe ser cambiado a equipoJugador.
@@ -437,6 +454,8 @@ public class Main {
                         }
 
                         System.out.println("El jugador "+jugadorAfectado.nombre+" ha sido removido del equipo "+equipoAfectado.nombre+".");
+
+                        st.executeUpdate("UPDATE jugador SET equipo = NULL WHERE dni = " + DNI);
                         /* TODO: hacer QUERY para cambiar los datos del JUGADOR en la BD.
                                El registro del JUGADOR puede ser obtenido con la variable "DNI".
                                El campo a cambiar es "equipo", el cual debe ser asignado a null.
@@ -533,6 +552,20 @@ public class Main {
             Statement st = conn.createStatement();
             String option;
             do {
+                HashMap<Integer, Partido> allGames = new HashMap<>();
+                ResultSet allGamesQuery = st.executeQuery("SELECT id_partido,equipo1, equipo2, equipo_ganador, equipo1_goles, equipo2_goles FROM partido");
+                while(allGamesQuery.next()){
+                    Partido partido = new Partido();
+                    partido.id_partido = allGamesQuery.getInt("id_partido");
+                    partido.equipo1 = allGamesQuery.getString("equipo1");
+                    partido.equipo2 = allGamesQuery.getString("equipo2");
+                    partido.equipo_ganador = allGamesQuery.getString("equipo_ganador");
+                    partido.equipo1_goles = allGamesQuery.getInt("equipo1_goles");
+                    partido.equipo2_goles = allGamesQuery.getInt("equipo2_goles");
+                    allGames.put(partido.id_partido, partido);
+                }
+                allGamesQuery.close();
+
                 System.out.println("1. Mostrar todos los partidos.");
                 System.out.println("2. Crear un partido.");
                 System.out.println("3. Editar un partido");
@@ -541,15 +574,50 @@ public class Main {
                 option = input.next();
                 switch (option) {
                     case "1":{
+                        for(Partido partido : allGames.values()){
+                            System.out.println(String.format("%d. %s %d | %d %s", partido.id_partido, partido.equipo1, partido.equipo1_goles, partido.equipo2_goles, partido.equipo2));
+                        }
+                        break;
                     }
                     case "2":{
 
+                        ResultSet equiposQuery = st.executeQuery("SELECT nombre FROM equipo");
+                        while(equiposQuery.next()){
+                            System.out.println(equiposQuery.getString("nombre"));
+                        }
+                        System.out.println("Ingrese el nombre del primer equipo");
+                        System.out.println("Ingrese el nombre del segundo equipo");
+                        String equipo1 = input.next();
+                        String equipo2 = input.next();
+                        st.executeUpdate(String.format("INSERT INTO partido(equipo1, equipo2) VALUES('%s', '%s')", equipo1, equipo2));
+                        System.out.println("Partido creado con exito");
+
+                        // equipo 1 // equipo 2
+
+                        break;
                     }
                     case "3":{
+                        while(true){
+                            String idPartidoString = input.next();
+                            if(idPartidoString.equals("0")){
+                                break;
+                            }
+                            if(!isNumeric(idPartidoString)){
+                                System.out.println("Ingrese un numero");
+                                continue;
+                            }
+                            int idPartido = Integer.parseInt(idPartidoString);
+                            if(!allGames.containsKey(idPartido)){
+                                System.out.println("No existe un partido con ese id");
+                                continue;
+                            }
+                            allGames.get(idPartido);
 
+                        }
+                        break;
                     }
                     case "4":{
-
+                        break;
                     }
                     case "0":{
                         break;
