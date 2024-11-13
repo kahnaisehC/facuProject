@@ -4,10 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Properties;
-import java.util.Scanner;
+import java.util.*;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
@@ -39,7 +36,23 @@ public class Main {
         return true;
     }
 
-
+    static  ArrayList<Jugador> obtenerListaJugadores(Connection conn, String equipo){
+        ArrayList<Jugador> jugadores = new ArrayList<>();
+        try{
+            Statement st = conn.createStatement();
+            ResultSet jugadoresQuery = st.executeQuery("SELECT dni, nombre, nombre_equipo FROM jugador WHERE nombre_equipo = '" + equipo + "'");
+            while(jugadoresQuery.next()){
+                Jugador jugador = new Jugador();
+                jugador.nombre = jugadoresQuery.getString("nombre");
+                jugador.dni = jugadoresQuery.getInt("dni");
+                jugador.nombre_equipo = jugadoresQuery.getString("nombre_equipo");
+                jugadores.add(jugador);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return jugadores;
+    }
     static ArrayList<Jugador> obtenerListaJugadores(Connection conn){
         ArrayList<Jugador> Jugadores = new ArrayList<>();
         try {
@@ -114,7 +127,6 @@ public class Main {
         }
     }
 
-
     static void revistarListaJugadores(Connection conn, Scanner input){
         try{
             Statement st = conn.createStatement();
@@ -188,11 +200,11 @@ public class Main {
                         }
 
                         System.out.println("El jugador "+Nombre+" ha sido registrado.");
-
-                        /* TODO: hacer QUERY para insertar el JUGADOR a la BD.
-                               Las variables a utilizar son "Nombre", "DNI", y "equipoJugador".
-                        */
-
+                        if(equipoJugador == null){
+                            st.executeUpdate(String.format("INSERT INTO jugador(nombre, dni) VALUES('%s', %d)", Nombre, DNI));
+                        }else{
+                            st.executeUpdate(String.format("INSERT INTO jugador(nombre, dni, equipoJugador) VALUES('%s', %d, '%s')", Nombre, DNI, equipoJugador));
+                        }
                         break;
                     }
 
@@ -223,11 +235,8 @@ public class Main {
                         }
 
                         System.out.println("El jugador "+jugadorAfectado.nombre+" fue eliminado del registro.");
-
-                        /* TODO: hacer QUERY para eliminar el JUGADOR de la BD.
-                               La variable a utilizar es "DNI".
-                        */
-
+                        st.executeUpdate("DELETE FROM jugador_partido WHERE dni_partido = " + DNI);
+                        st.executeUpdate("DELETE FROM jugador WHERE dni = " + DNI);
                         break;
                     }
 
@@ -547,24 +556,68 @@ public class Main {
             throw new RuntimeException(e);
         }
     }
+
+    static void editarPartido(Connection conn, Scanner input, Partido partido){
+        while(true){
+            System.out.println("Ingrese los goles de " + partido.equipo1);
+            String option = input.next();
+            if(!isNumeric(option)){
+                System.out.println("Ingrese un numero");
+                continue;
+            }
+            partido.equipo1_goles = Integer.parseInt(option);
+            System.out.println("Ingrese los goles de " + partido.equipo2);
+            option = input.next();
+            if(!isNumeric(option)){
+                System.out.println("Ingrese un numero");
+                continue;
+            }
+            partido.equipo2_goles = Integer.parseInt(option);
+            break;
+        }
+        try{
+            Statement st = conn.createStatement();
+            st.executeUpdate(String.format("UPDATE partido SET equipo1_goles = %d, equipo2_goles = %d WHERE id_partido = %d", partido.equipo1_goles, partido.equipo2_goles, partido.id_partido));
+            st.close();
+        }catch (Exception  e){
+            System.out.println(e.getMessage());
+            throw new RuntimeException(e);
+        }
+
+    }
+    static void borrarPartido(Connection conn, Partido partido){
+        try{
+            Statement st = conn.createStatement();
+            st.executeUpdate(String.format("DELETE FROM partido WHERE id_partido = %d", partido.id_partido));
+            st.close();
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
     static void revisarListaPartidos(Connection conn, Scanner input){
         try {
             Statement st = conn.createStatement();
             String option;
             do {
                 HashMap<Integer, Partido> allGames = new HashMap<>();
-                ResultSet allGamesQuery = st.executeQuery("SELECT id_partido,equipo1, equipo2, equipo_ganador, equipo1_goles, equipo2_goles FROM partido");
+                HashSet<String> equipos = new HashSet<>();
+                ResultSet allGamesQuery = st.executeQuery("SELECT id_partido,equipo1, equipo2, equipo1_goles, equipo2_goles FROM partido");
                 while(allGamesQuery.next()){
                     Partido partido = new Partido();
                     partido.id_partido = allGamesQuery.getInt("id_partido");
                     partido.equipo1 = allGamesQuery.getString("equipo1");
                     partido.equipo2 = allGamesQuery.getString("equipo2");
-                    partido.equipo_ganador = allGamesQuery.getString("equipo_ganador");
                     partido.equipo1_goles = allGamesQuery.getInt("equipo1_goles");
                     partido.equipo2_goles = allGamesQuery.getInt("equipo2_goles");
                     allGames.put(partido.id_partido, partido);
                 }
                 allGamesQuery.close();
+                ResultSet equiposQuery = st.executeQuery("SELECT nombre FROM equipo");
+                while(equiposQuery.next()){
+                    equipos.add(equiposQuery.getString("nombre"));
+                }
+                equiposQuery.close();
 
                 System.out.println("1. Mostrar todos los partidos.");
                 System.out.println("2. Crear un partido.");
@@ -581,23 +634,48 @@ public class Main {
                     }
                     case "2":{
 
-                        ResultSet equiposQuery = st.executeQuery("SELECT nombre FROM equipo");
-                        while(equiposQuery.next()){
-                            System.out.println(equiposQuery.getString("nombre"));
+                        for(String equipo : equipos){
+                            System.out.println(equipo);
                         }
                         System.out.println("Ingrese el nombre del primer equipo");
-                        System.out.println("Ingrese el nombre del segundo equipo");
                         String equipo1 = input.next();
+                        System.out.println("Ingrese el nombre del segundo equipo");
                         String equipo2 = input.next();
-                        st.executeUpdate(String.format("INSERT INTO partido(equipo1, equipo2) VALUES('%s', '%s')", equipo1, equipo2));
-                        System.out.println("Partido creado con exito");
+                        if(equipo1.equals(equipo2)){
+                            System.out.println("ERROR: equipos iguales");
+                            break;
+                        }
+                        if(!equipos.contains(equipo1) || !equipos.contains(equipo2)){
+                            System.out.println("ERROR: equipo no existente");
+                            break;
+                        }
+                        ArrayList<Jugador> jugadoresEquipo1 = obtenerListaJugadores(conn, equipo1);
+                        ArrayList<Jugador> jugadoresEquipo2 = obtenerListaJugadores(conn, equipo2);
 
-                        // equipo 1 // equipo 2
+                        st.executeUpdate(String.format("INSERT INTO partido(equipo1, equipo2) VALUES('%s', '%s')", equipo1, equipo2));
+                        ResultSet idPartidoQuery = st.executeQuery("SELECT MAX(id_partido) FROM partido");
+                        idPartidoQuery.next();
+                        int idPartido = idPartidoQuery.getInt(1);
+                        idPartidoQuery.close();
+
+                        for(Jugador jugador : jugadoresEquipo1){
+                            st.executeUpdate(String.format("INSERT INTO jugador_partido(dni_jugador, id_partido) VALUES(%d, %d)", jugador.dni, idPartido));
+                        }
+                        for(Jugador jugador : jugadoresEquipo2){
+                            st.executeUpdate(String.format("INSERT INTO jugador_partido(dni_jugador, id_partido) VALUES(%d, %d)", jugador.dni, idPartido));
+                        }
+
+                        System.out.println("Partido creado con exito");
 
                         break;
                     }
                     case "3":{
+                        for(Partido partido : allGames.values()){
+                            System.out.println(String.format("%d. %s %d | %d %s", partido.id_partido, partido.equipo1, partido.equipo1_goles, partido.equipo2_goles, partido.equipo2));
+                        }
                         while(true){
+                            System.out.println("Ingrese el id del partido a editar");
+                            System.out.println("Ingrese (0) para volver");
                             String idPartidoString = input.next();
                             if(idPartidoString.equals("0")){
                                 break;
@@ -611,12 +689,37 @@ public class Main {
                                 System.out.println("No existe un partido con ese id");
                                 continue;
                             }
-                            allGames.get(idPartido);
+                            Partido partido = allGames.get(idPartido);
+                            editarPartido(conn, input, partido);
 
                         }
                         break;
                     }
                     case "4":{
+                        for(Partido partido : allGames.values()){
+                            System.out.println(String.format("%d. %s %d | %d %s", partido.id_partido, partido.equipo1, partido.equipo1_goles, partido.equipo2_goles, partido.equipo2));
+                        }
+                        while(true){
+                            System.out.println("Ingrese el id del partido a eliminar");
+                            System.out.println("Ingrese (0) para volver");
+                            String idPartidoString = input.next();
+                            if(idPartidoString.equals("0")){
+                                break;
+                            }
+                            if(!isNumeric(idPartidoString)){
+                                System.out.println("Ingrese un numero");
+                                continue;
+                            }
+                            int idPartido = Integer.parseInt(idPartidoString);
+                            if(!allGames.containsKey(idPartido)){
+                                System.out.println("No existe un partido con ese id");
+                                continue;
+                            }
+                            Partido partido = allGames.get(idPartido);
+                            borrarPartido(conn, partido);
+                            allGames.remove(partido.id_partido);
+                            break;
+                        }
                         break;
                     }
                     case "0":{
