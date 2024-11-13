@@ -203,7 +203,7 @@ public class Main {
                         if(equipoJugador == null){
                             st.executeUpdate(String.format("INSERT INTO jugador(nombre, dni) VALUES('%s', %d)", Nombre, DNI));
                         }else{
-                            st.executeUpdate(String.format("INSERT INTO jugador(nombre, dni, equipoJugador) VALUES('%s', %d, '%s')", Nombre, DNI, equipoJugador));
+                            st.executeUpdate(String.format("INSERT INTO jugador(nombre, dni, nombre_equipo) VALUES('%s', %d, '%s')", Nombre, DNI, equipoJugador));
                         }
                         break;
                     }
@@ -237,6 +237,10 @@ public class Main {
                         System.out.println("El jugador "+jugadorAfectado.nombre+" fue eliminado del registro.");
                         st.executeUpdate("DELETE FROM jugador_partido WHERE dni_partido = " + DNI);
                         st.executeUpdate("DELETE FROM jugador WHERE dni = " + DNI);
+                        /* TODO: hacer QUERY para eliminar el JUGADOR de la BD.
+                               La variable a utilizar es "DNI".
+                        */
+
                         break;
                     }
 
@@ -510,6 +514,7 @@ public class Main {
 
                         if(jugadoresEnEquipo.isEmpty()){
                             System.out.println("El equipo fue eliminado del registro.");
+                            st.executeUpdate("DELETE FROM equipo WHERE equipo = '" + equipoAfectado.nombre + "'");
                             /*TODO: hacer QUERY para eliminar el EQUIPO de la BD.
                                El campo a utilizar es equipoJugador.
                             */
@@ -522,11 +527,11 @@ public class Main {
                             /*TODO: hacer QUERY para eliminar el EQUIPO de la BD.
                                El campo a utilizar es equipoJugador.
                             */
-
                             /*TODO: hacer QUERY para cambiar los datos de los JUGADOR(es) en la BD.
                                Todos los Jugador en "jugadoresEnEquipo" deben ser eliminados de la BD.
                             */
-
+                            st.executeUpdate("DELETE FROM jugador WHERE nombre_equipo = '" + equipoAfectado.nombre + "'");
+                            st.executeUpdate("DELETE FROM equipo WHERE nombre = '" + equipoAfectado.nombre + "'");
                             System.out.println("El equipo "+equipoAfectado.nombre+" y sus jugadores han sido eliminados.");
                             break;
                         }
@@ -540,6 +545,8 @@ public class Main {
                            Todos los Jugador en "jugadoresEnEquipo" deben tener su campo "equipo" cambiado a null.
                         */
 
+                        st.executeUpdate("UPDATE jugador SET nombre_equipo = NULL WHERE nombre_equipo = '" + equipoAfectado.nombre + "'");
+                        st.executeUpdate("DELETE FROM equipo WHERE nombre = '" + equipoAfectado.nombre + "'");
                         break;
                     }
 
@@ -595,6 +602,19 @@ public class Main {
             throw new RuntimeException(e);
         }
     }
+    static void mostrarJugadoresPartidos(Connection conn, Partido partido){
+        try{
+            Statement st = conn.createStatement();
+            ResultSet query = st.executeQuery("SELECT nombre, dni_jugador FROM jugador_partido LEFT JOIN jugador ON jugador_partido.dni_jugador = jugador.dni WHERE id_partido = " + partido.id_partido);
+            while(query.next()){
+                System.out.println("Jugador: " + query.getString("nombre") + " | " + "DNI: " + query.getInt("dni_jugador"));
+            }
+            st.close();
+        }catch (Exception  e){
+            System.out.println(e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
     static void revisarListaPartidos(Connection conn, Scanner input){
         try {
             Statement st = conn.createStatement();
@@ -623,6 +643,7 @@ public class Main {
                 System.out.println("2. Crear un partido.");
                 System.out.println("3. Editar un partido");
                 System.out.println("4. Borrar un partido");
+                System.out.println("5. Ver detalles del partido");
                 System.out.println("0. Volver hacia atras.");
                 option = input.next();
                 switch (option) {
@@ -718,6 +739,32 @@ public class Main {
                             Partido partido = allGames.get(idPartido);
                             borrarPartido(conn, partido);
                             allGames.remove(partido.id_partido);
+                            break;
+                        }
+                        break;
+                    }
+                    case "5":{
+                        for(Partido partido : allGames.values()){
+                            System.out.println(String.format("%d. %s %d | %d %s", partido.id_partido, partido.equipo1, partido.equipo1_goles, partido.equipo2_goles, partido.equipo2));
+                        }
+                        while(true){
+                            System.out.println("Ingrese el id del partido para mostrar sus jugadores");
+                            System.out.println("Ingrese (0) para volver");
+                            String idPartidoString = input.next();
+                            if(idPartidoString.equals("0")){
+                                break;
+                            }
+                            if(!isNumeric(idPartidoString)){
+                                System.out.println("Ingrese un numero");
+                                continue;
+                            }
+                            int idPartido = Integer.parseInt(idPartidoString);
+                            if(!allGames.containsKey(idPartido)){
+                                System.out.println("No existe un partido con ese id");
+                                continue;
+                            }
+                            Partido partido = allGames.get(idPartido);
+                            mostrarJugadoresPartidos(conn, partido);
                             break;
                         }
                         break;
